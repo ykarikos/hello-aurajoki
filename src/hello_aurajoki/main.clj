@@ -1,9 +1,12 @@
 (ns hello-aurajoki.main
   (:gen-class)
-  (:require
-   [aleph.http :as http]
-   [reitit.ring :as ring]
-   [ring.middleware.defaults :as defaults]))
+  (:require [aleph.http :as http]
+            [reitit.ring :as ring]
+            [clj-commons.byte-streams :as bs]
+            [jsonista.core :as j]
+            [reitit.ring.middleware.muuntaja :as muuntaja]
+            [reitit.ring.middleware.parameters :as parameters]
+            [muuntaja.core :as m]))
 
 ;; Handlers
 
@@ -18,8 +21,9 @@
 
 (def ring-opts
   {:data
-   {:middleware
-    [[defaults/wrap-defaults defaults/api-defaults]]}})
+   {:muuntaja m/instance
+    :middleware [parameters/parameters-middleware
+                 muuntaja/format-middleware]}})
 
 (def app
   (ring/ring-handler
