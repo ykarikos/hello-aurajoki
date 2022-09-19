@@ -23,28 +23,55 @@
                 (OffsetDateTime/now))}))
 
 ; https://open-meteo.com/en/docs
-(def forecast-url
-  "https://api.open-meteo.com/v1/forecast?latitude=60.45148&longitude=22.26869&hourly=temperature_2m")
+(def forecast-url-prefix
+  "https://api.open-meteo.com/v1/forecast?hourly=temperature_2m&")
+; https://open-meteo.com/en/docs/geocoding-api
+(def geocoding-url-prefix
+  "https://geocoding-api.open-meteo.com/v1/search?name=")
 
-(defn- average-temperature-forecast []
-  (let [response (-> @(http/get forecast-url)
-                     :body
-                     bs/to-string
-                     (j/read-value j/keyword-keys-object-mapper))
+(defn- api-get [url]
+  (-> @(http/get url)
+    :body
+    bs/to-string
+    (j/read-value j/keyword-keys-object-mapper)))
+
+(defn- get-location [city-name]
+  (-> (str geocoding-url-prefix city-name)
+      api-get
+      :results
+      first))
+
+(defn- average-temperature-forecast [{:keys [latitude longitude name
+                                             country_code elevation]}]
+  (let [forecast-url (str forecast-url-prefix
+                          "latitude=" latitude
+                          "&longitude=" longitude)
+        response (api-get forecast-url)
         temperatures (-> response
                          :hourly
-                         :temperature_2m)]
-    (/ (reduce + temperatures) (count temperatures))))
+                         :temperature_2m)
+        times (-> response
+                  :hourly
+                  :time
+                  sort)]
+    {:average-temperature-forecast (/ (reduce + temperatures) (count temperatures))
+     :time-start (first times)
+     :time-end (last times)
+     :city name
+     :elevation elevation
+     :country country_code}))
 
-(defn- forecast-handler [_]
-  {:status 200
-   :body {:average-temperature-forecast (average-temperature-forecast)}})
+(defn- forecast-handler [{:keys [path-params]}]
+  (let [location (get-location (:city path-params))
+        forecast (average-temperature-forecast location)]
+    {:status 200
+     :body forecast}))
 
 ;; Routes and middleware
 
 (def routes
   [["/" {:get {:handler home-handler}}]
-   ["/api/forecast" {:get {:handler forecast-handler}}]])
+   ["/api/forecast/:city" {:get {:handler forecast-handler}}]])
 
 (def ring-opts
   {:data
