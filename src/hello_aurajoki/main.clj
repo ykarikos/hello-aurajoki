@@ -62,10 +62,11 @@
      :country country_code}))
 
 (defn- forecast-handler [{:keys [path-params]}]
-  (let [location (get-location (:city path-params))
-        forecast (average-temperature-forecast location)]
+  (if-let [location (get-location (:city path-params))]
     {:status 200
-     :body forecast}))
+     :body (average-temperature-forecast location)}
+    {:status 404
+     :body {:error (str (:city path-params) " not found!")}}))
 
 ;; Routes and middleware
 
