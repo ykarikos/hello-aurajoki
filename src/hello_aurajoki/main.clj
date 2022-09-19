@@ -6,13 +6,22 @@
             [jsonista.core :as j]
             [reitit.ring.middleware.muuntaja :as muuntaja]
             [reitit.ring.middleware.parameters :as parameters]
-            [muuntaja.core :as m]))
+            [muuntaja.core :as m])
+  (:import [java.time OffsetDateTime]))
 
 ;; Handlers
 
-(defn home-handler [request]
-  {:status 200
-   :body "Hello world!"})
+(defn home-handler [{:keys [params] :as request}]
+  (def r request)
+  (let [friend (get params "friend")]
+    {:status 200
+     :headers {"Content-Type" "text/plain; charset=utf-8"}
+     :body (str "Hello Aurajoki Overflow"
+                (when friend
+                  (str " and " friend))
+                "!\n\n"
+                (OffsetDateTime/now))}))
+
 
 ;; Routes and middleware
 
