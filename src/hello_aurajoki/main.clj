@@ -22,11 +22,29 @@
                 "!\n\n"
                 (OffsetDateTime/now))}))
 
+; https://open-meteo.com/en/docs
+(def forecast-url
+  "https://api.open-meteo.com/v1/forecast?latitude=60.45148&longitude=22.26869&hourly=temperature_2m")
+
+(defn- average-temperature-forecast []
+  (let [response (-> @(http/get forecast-url)
+                     :body
+                     bs/to-string
+                     (j/read-value j/keyword-keys-object-mapper))
+        temperatures (-> response
+                         :hourly
+                         :temperature_2m)]
+    (/ (reduce + temperatures) (count temperatures))))
+
+(defn- forecast-handler [_]
+  {:status 200
+   :body {:average-temperature-forecast (average-temperature-forecast)}})
 
 ;; Routes and middleware
 
 (def routes
-  [["/" {:get {:handler home-handler}}]])
+  [["/" {:get {:handler home-handler}}]
+   ["/api/forecast" {:get {:handler forecast-handler}}]])
 
 (def ring-opts
   {:data
